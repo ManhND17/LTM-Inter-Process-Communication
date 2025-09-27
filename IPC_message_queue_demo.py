@@ -2,7 +2,7 @@
 import multiprocessing as mp
 import queue, time, random, threading
 
-# Xử lý từng task
+# Xử lý từng loại task
 def process_task(task):
     t = task.get("type")
     data = task.get("data", [])
@@ -28,7 +28,7 @@ def process_task(task):
         }
     return {"type": "error", "msg": f"Unknown type {t}"}
 
-# Worker chạy trong process riêng
+# Worker process: nhận task và trả kết quả
 def worker(wid, tq, rq, active, shutdown):
     with active.get_lock():
         active.value += 1
@@ -45,7 +45,7 @@ def worker(wid, tq, rq, active, shutdown):
             res = process_task(task)
             res["worker"] = wid
             res["time"] = time.time() - start
-            rq.put(res)   # Không cần timeout vì queue không giới hạn
+            rq.put(res)  
             processed += 1
     finally:
         with active.get_lock():
@@ -55,7 +55,7 @@ def worker(wid, tq, rq, active, shutdown):
 
 # Quản lý task / kết quả
 class TaskManager:
-    def __init__(self, workers=4, qsize=0):
+    def __init__(self, workers=4, qsize=5000):
         self.tq = mp.Queue(qsize or 0)
         self.rq = mp.Queue(qsize or 0)
         self.active = mp.Value("i", 0)
@@ -114,7 +114,7 @@ def generate_tasks(n=1000):
 
 # Chạy test hiệu suất
 def run_test(workers=4, num_tasks=1000):
-    mgr = TaskManager(workers=workers, qsize=0)  # không giới hạn queue
+    mgr = TaskManager(workers=workers, qsize=5000)
     mgr.start()
 
     tasks = generate_tasks(num_tasks)
@@ -155,4 +155,4 @@ def run_test(workers=4, num_tasks=1000):
 # Main
 if __name__ == "__main__":
     mp.set_start_method("spawn", force=True)
-    run_test(workers=6, num_tasks=300000)
+    run_test(workers=6, num_tasks=30000)
